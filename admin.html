@@ -2,136 +2,125 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Panel - Ticket System</title>
+  <title>Admin Panel Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      font-family: Arial, sans-serif;
       background: #121212;
       color: #fff;
+      font-family: Arial, sans-serif;
       margin: 0;
-      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-    .container {
-      max-width: 800px;
-      margin: auto;
+
+    .login-container {
       background: #1f1f1f;
       border: 2px solid #ffd700;
       border-radius: 12px;
-      padding: 20px;
+      padding: 30px;
+      width: 90%;
+      max-width: 400px;
       box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
     }
+
     h2 {
-      color: #ffd700;
       text-align: center;
       margin-bottom: 20px;
-    }
-    .ticket {
-      background: #2a2a2a;
-      border: 2px solid #ffd700;
-      border-radius: 10px;
-      padding: 15px;
-      margin-top: 20px;
-    }
-    .ticket h3 {
-      margin-top: 0;
       color: #ffd700;
     }
-    .ticket-messages {
-      max-height: 150px;
-      overflow-y: auto;
-      background: #1a1a1a;
-      padding: 10px;
+
+    input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      background: #2a2a2a;
+      border: 1px solid #ffd700;
       border-radius: 8px;
-      margin-bottom: 10px;
+      color: #fff;
+      font-size: 16px;
+      box-sizing: border-box;
+      margin-bottom: 15px;
+      transition: all 0.3s ease;
+    }
+
+    input[type="password"]:focus {
+      outline: none;
+      background: #333;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+
+    button {
+      background: linear-gradient(45deg, #ffd700, #ffcc00);
+      border: none;
+      color: #1a1a1a;
+      font-weight: bold;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+    }
+
+    #error {
+      color: red;
+      text-align: center;
+      margin-top: 10px;
       font-size: 14px;
     }
-    .ticket-input {
-      display: flex;
-      gap: 10px;
-    }
-    .ticket-input input {
-      flex: 1;
-      padding: 8px;
-      background: #333;
-      border: 1px solid #ffd700;
-      color: #fff;
-      border-radius: 6px;
-    }
-    .ticket-input button {
-      background: linear-gradient(45deg, #ffd700, #ffcc00);
-      color: #1a1a1a;
-      border: none;
-      cursor: pointer;
-      padding: 8px 16px;
-      border-radius: 6px;
+
+    @media (max-width: 480px) {
+      .login-container {
+        padding: 20px;
+      }
+
+      button {
+        padding: 10px 16px;
+        font-size: 14px;
+      }
+
+      input[type="password"] {
+        padding: 10px;
+        font-size: 14px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Admin Panel - Ticket System</h2>
-    <div id="admin-tickets"></div>
+  <div class="login-container">
+    <h2>Admin Login</h2>
+    <input type="password" id="password" placeholder="Enter admin password">
+    <button onclick="login()">Login</button>
+    <p id="error"></p>
   </div>
 
   <script>
-    const ws = new WebSocket("ws://ticket-server-5we9.onrender.com"); // Replace with your deployed server
-
-    ws.onopen = () => {
-      console.log("Connected to server");
-      ws.send(JSON.stringify({ type: 'admin-login' }));
-    };
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'ticket-list') {
-        renderTickets(data.tickets);
-      }
-      if (data.type === 'new-message') {
-        addMessage(data.ticketId, data.username, data.text, data.timestamp);
-      }
-    };
-
-    function renderTickets(tickets) {
-      const container = document.getElementById('admin-tickets');
-      container.innerHTML = '';
-      tickets.forEach(ticket => {
-        const ticketDiv = document.createElement('div');
-        ticketDiv.className = 'ticket';
-        ticketDiv.id = `admin-ticket-${ticket.id}`;
-        ticketDiv.innerHTML = `
-          <h3>Ticket #${ticket.id} (${ticket.username})</h3>
-          <div class="ticket-messages" id="admin-messages-${ticket.id}">
-            ${ticket.messages.map(msg => `<p><strong>${msg.username}:</strong> ${msg.text}</p>`).join('')}
-          </div>
-          <div class="ticket-input">
-            <input type="text" id="admin-input-${ticket.id}" placeholder="Reply...">
-            <button onclick="sendReply(${ticket.id})">Send</button>
-          </div>
-        `;
-        container.appendChild(ticketDiv);
+    function login() {
+      const password = document.getElementById('password').value;
+      fetch('/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          window.location.href = '/admin';
+        } else {
+          document.getElementById('error').innerText = data.message;
+        }
+      })
+      .catch(error => {
+        console.error('Error during login:', error);
+        document.getElementById('error').innerText = 'An error occurred. Please try again.';
       });
-    }
-
-    function sendReply(ticketId) {
-      const input = document.getElementById(`admin-input-${ticketId}`);
-      const text = input.value.trim();
-      if (text !== '') {
-        ws.send(JSON.stringify({
-          type: 'admin-reply',
-          ticketId,
-          text
-        }));
-        input.value = '';
-      }
-    }
-
-    function addMessage(ticketId, username, text, timestamp) {
-      const msgContainer = document.getElementById(`admin-messages-${ticketId}`);
-      if (msgContainer) {
-        const msg = document.createElement('p');
-        msg.innerHTML = `<strong>${username}:</strong> ${text}`;
-        msgContainer.appendChild(msg);
-      }
     }
   </script>
 </body>
