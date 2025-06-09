@@ -1,77 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Admin Panel</title>
-    <style>
-        body { background: #121212; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
-        h2 { color: #ffd700; }
-        .ticket { background: #1f1f1f; border: 2px solid #ffd700; border-radius: 10px; padding: 10px; margin-bottom: 20px; }
-        .ticket h3 { margin-top: 0; }
-        .messages { background: #2a2a2a; border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto; }
-        .input { display: flex; margin-top: 10px; }
-        .input input { flex: 1; padding: 8px; background: #333; border: 1px solid #ffd700; color: #fff; border-radius: 6px; }
-        .input button { background: linear-gradient(45deg, #ffd700, #ffcc00); border: none; color: #1a1a1a; border-radius: 6px; padding: 8px 12px; margin-left: 10px; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Admin Panel - Ticket System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: #1f1f1f;
+      border: 2px solid #ffd700;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    }
+    h2 {
+      color: #ffd700;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .ticket {
+      background: #2a2a2a;
+      border: 2px solid #ffd700;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+    .ticket h3 {
+      margin-top: 0;
+      color: #ffd700;
+    }
+    .ticket-messages {
+      max-height: 150px;
+      overflow-y: auto;
+      background: #1a1a1a;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .ticket-input {
+      display: flex;
+      gap: 10px;
+    }
+    .ticket-input input {
+      flex: 1;
+      padding: 8px;
+      background: #333;
+      border: 1px solid #ffd700;
+      color: #fff;
+      border-radius: 6px;
+    }
+    .ticket-input button {
+      background: linear-gradient(45deg, #ffd700, #ffcc00);
+      color: #1a1a1a;
+      border: none;
+      cursor: pointer;
+      padding: 8px 16px;
+      border-radius: 6px;
+    }
+  </style>
 </head>
 <body>
-    <h2>Admin Panel</h2>
-    <div id="login">
-        <input type="password" id="admin-password" placeholder="Enter Admin Password">
-        <button onclick="adminLogin()">Login</button>
-    </div>
-    <div id="tickets"></div>
+  <div class="container">
+    <h2>Admin Panel - Ticket System</h2>
+    <div id="admin-tickets"></div>
+  </div>
 
-    <script>
-        const ws = new WebSocket('wss://ticket-server-5we9.onrender.com'); // Replace with your deployed WS URL
-        let isAdmin = false;
+  <script>
+    const ws = new WebSocket("ws://ticket-server-5we9.onrender.com"); // Replace with your deployed server
 
-        function adminLogin() {
-            const password = document.getElementById('admin-password').value;
-            ws.send(JSON.stringify({ type: 'admin-login', password }));
-        }
+    ws.onopen = () => {
+      console.log("Connected to server");
+      ws.send(JSON.stringify({ type: 'admin-login' }));
+    };
 
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'admin-login' && data.success) {
-                isAdmin = true;
-                document.getElementById('login').style.display = 'none';
-                ws.send(JSON.stringify({ type: 'get-tickets' }));
-            } else if (data.type === 'all-tickets') {
-                const container = document.getElementById('tickets');
-                container.innerHTML = '';
-                data.tickets.forEach(ticket => {
-                    const ticketDiv = document.createElement('div');
-                    ticketDiv.className = 'ticket';
-                    ticketDiv.innerHTML = `<h3>${ticket.ticketId} (${ticket.username})</h3>`;
-                    const messagesDiv = document.createElement('div');
-                    messagesDiv.className = 'messages';
-                    ticket.messages.forEach(msg => {
-                        messagesDiv.innerHTML += `<p><strong>${msg.sender}:</strong> ${msg.text} <em>${msg.timestamp}</em></p>`;
-                    });
-                    ticketDiv.appendChild(messagesDiv);
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'ticket-list') {
+        renderTickets(data.tickets);
+      }
+      if (data.type === 'new-message') {
+        addMessage(data.ticketId, data.username, data.text, data.timestamp);
+      }
+    };
 
-                    const inputDiv = document.createElement('div');
-                    inputDiv.className = 'input';
-                    inputDiv.innerHTML = `
-                        <input type="text" id="reply-${ticket.ticketId}" placeholder="Type a reply...">
-                        <button onclick="sendReply('${ticket.ticketId}')">Reply</button>
-                    `;
-                    ticketDiv.appendChild(inputDiv);
+    function renderTickets(tickets) {
+      const container = document.getElementById('admin-tickets');
+      container.innerHTML = '';
+      tickets.forEach(ticket => {
+        const ticketDiv = document.createElement('div');
+        ticketDiv.className = 'ticket';
+        ticketDiv.id = `admin-ticket-${ticket.id}`;
+        ticketDiv.innerHTML = `
+          <h3>Ticket #${ticket.id} (${ticket.username})</h3>
+          <div class="ticket-messages" id="admin-messages-${ticket.id}">
+            ${ticket.messages.map(msg => `<p><strong>${msg.username}:</strong> ${msg.text}</p>`).join('')}
+          </div>
+          <div class="ticket-input">
+            <input type="text" id="admin-input-${ticket.id}" placeholder="Reply...">
+            <button onclick="sendReply(${ticket.id})">Send</button>
+          </div>
+        `;
+        container.appendChild(ticketDiv);
+      });
+    }
 
-                    container.appendChild(ticketDiv);
-                });
-            }
-        };
+    function sendReply(ticketId) {
+      const input = document.getElementById(`admin-input-${ticketId}`);
+      const text = input.value.trim();
+      if (text !== '') {
+        ws.send(JSON.stringify({
+          type: 'admin-reply',
+          ticketId,
+          text
+        }));
+        input.value = '';
+      }
+    }
 
-        function sendReply(ticketId) {
-            const input = document.getElementById(`reply-${ticketId}`);
-            const text = input.value.trim();
-            if (text !== '') {
-                ws.send(JSON.stringify({ type: 'admin-reply', ticketId, text }));
-                input.value = '';
-            }
-        }
-    </script>
+    function addMessage(ticketId, username, text, timestamp) {
+      const msgContainer = document.getElementById(`admin-messages-${ticketId}`);
+      if (msgContainer) {
+        const msg = document.createElement('p');
+        msg.innerHTML = `<strong>${username}:</strong> ${text}`;
+        msgContainer.appendChild(msg);
+      }
+    }
+  </script>
 </body>
 </html>
