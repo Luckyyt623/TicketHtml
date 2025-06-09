@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Chat Purchase Agreement & Ticket System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: #1f1f1f;
+      border: 2px solid #ffd700;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    }
+    h2 {
+      color: #ffd700;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .agreement-content {
+      font-size: 16px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    ol {
+      margin-left: 20px;
+    }
+    .buttons {
+      text-align: center;
+      margin-top: 20px;
+    }
+    button {
+      background: linear-gradient(45deg, #ffd700, #ffcc00);
+      border: none;
+      color: #1a1a1a;
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 5px;
+      transition: all 0.3s ease;
+    }
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+    }
+    .ticket {
+      background: #2a2a2a;
+      border: 2px solid #ffd700;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+    .ticket h3 {
+      margin-top: 0;
+      color: #ffd700;
+    }
+    .ticket-messages {
+      max-height: 150px;
+      overflow-y: auto;
+      background: #1a1a1a;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .ticket-input {
+      display: flex;
+      gap: 10px;
+    }
+    .ticket-input input {
+      flex: 1;
+      padding: 8px;
+      background: #333;
+      border: 1px solid #ffd700;
+      color: #fff;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="agreement-container">
+    <h2>Team Chat Purchase Agreement</h2>
+    <div class="agreement-content">
+      <p>Before purchasing a <strong>Team Chat Code</strong> for <strong>$25 USD</strong> per team code, please carefully read the following terms:</p>
+      <ol>
+        <li><strong>Non-Refundable Purchases:</strong> All purchases are <strong>final, non-refundable, and non-transferable</strong>.</li>
+        <li><strong>Server Downtime or Closure:</strong> If the server is closed, unavailable, or ceases operation (permanently or temporarily), <strong>no refunds</strong> will be issued.</li>
+        <li><strong>Usage of Team Chat Codes:</strong> Each team code is unique and grants access to one team chat. Users may share their code with team members and friends to join the same team chat. Codes may not be resold or transferred for profit.</li>
+        <li><strong>Service Suspension:</strong> The provider reserves the right to suspend or revoke access for reasons including violation of terms, abuse, or technical issues.</li>
+      </ol>
+      <p>By clicking <strong>Agree</strong>, you accept these terms and the $25 USD purchase fee.</p>
+    </div>
+    <div class="buttons">
+      <button onclick="agree()">Agree</button>
+      <button onclick="decline()">Decline</button>
+    </div>
+  </div>
+
+  <div class="container" id="ticket-system" style="display: none;">
+    <h2>Team Support Ticket System</h2>
+    <div class="buttons">
+      <button onclick="createTicket()">Create Ticket</button>
+    </div>
+    <div id="tickets"></div>
+  </div>
+
+  <script>
+    let socket;
+    let username = `User${Math.floor(Math.random() * 1000)}`;
+    let ticketCount = 0;
+
+    function connectWebSocket() {
+      socket = new WebSocket("wss://ticket-server-5we9.onrender.com"); // 🔧 Replace with your server
+
+      socket.onopen = () => {
+        console.log("Connected to WebSocket");
+      };
+
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === "ticket-message") {
+          const ticketId = data.ticketId;
+          const messages = document.getElementById(`messages-${ticketId}`);
+          if (messages) {
+            const msg = document.createElement('p');
+            msg.innerHTML = `<strong>${data.from}:</strong> ${data.text}`;
+            messages.appendChild(msg);
+            messages.scrollTop = messages.scrollHeight;
+          }
+        }
+      };
+
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+
+      socket.onclose = () => {
+        console.log("Disconnected from WebSocket");
+        setTimeout(connectWebSocket, 3000); // Try reconnecting
+      };
+    }
+
+    connectWebSocket();
+
+    function agree() {
+      alert("You agreed to the terms. You can now create support tickets.");
+      document.getElementById('agreement-container').style.display = 'none';
+      document.getElementById('ticket-system').style.display = 'block';
+    }
+
+    function decline() {
+      alert("You have declined the terms. Purchase cannot continue.");
+    }
+
+    function createTicket() {
+      ticketCount++;
+      const ticketsDiv = document.getElementById('tickets');
+      const ticketDiv = document.createElement('div');
+      ticketDiv.className = 'ticket';
+      ticketDiv.id = `ticket-${ticketCount}`;
+      ticketDiv.innerHTML = `
+        <h3>Ticket #${ticketCount}</h3>
+        <div class="ticket-messages" id="messages-${ticketCount}">
+          <p><em>System:</em> Ticket created. Chat with support here.</p>
+        </div>
+        <div class="ticket-input">
+          <input type="text" id="input-${ticketCount}" placeholder="Type a message...">
+          <button onclick="sendMessage(${ticketCount})">Send</button>
+          <button onclick="closeTicket(${ticketCount})">Close</button>
+        </div>
+      `;
+      ticketsDiv.appendChild(ticketDiv);
+
+      // Notify server
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'create-ticket', username, ticketId: ticketCount }));
+      }
+    }
+
+    function sendMessage(ticketId) {
+      const input = document.getElementById(`input-${ticketId}`);
+      const text = input.value.trim();
+      if (text !== '') {
+        const messages = document.getElementById(`messages-${ticketId}`);
+        const msg = document.createElement('p');
+        msg.innerHTML = `<strong>You:</strong> ${text}`;
+        messages.appendChild(msg);
+        messages.scrollTop = messages.scrollHeight;
+        input.value = '';
+
+        // Send to server
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'ticket-message',
+            ticketId,
+            from: username,
+            text
+          }));
+        }
+      }
+    }
+
+    function closeTicket(ticketId) {
+      const ticket = document.getElementById(`ticket-${ticketId}`);
+      if (ticket) {
+        ticket.remove();
+      }
+    }
+  </script>
+</body>
+</html>
