@@ -86,6 +86,10 @@
       color: #fff;
       border-radius: 6px;
     }
+    .ticket-input button {
+      background: linear-gradient(45deg, #ffd700, #ffcc00);
+      color: #1a1a1a;
+    }
   </style>
 </head>
 <body>
@@ -95,7 +99,6 @@
       <p>Before purchasing a <strong>Team Chat Code</strong> for <strong>$25 USD</strong> per team code, please carefully read the following terms:</p>
       <ol>
         <li><strong>Non-Refundable Purchases:</strong> All purchases are <strong>final, non-refundable, and non-transferable</strong>.</li>
-        <li><strong>Server Downtime or Closure:</strong> If the server is closed, unavailable, or ceases operation (permanently or temporarily), <strong>no refunds</strong> will be issued.</li>
         <li><strong>Usage of Team Chat Codes:</strong> Each team code is unique and grants access to one team chat. Users may share their code with team members and friends to join the same team chat. Codes may not be resold or transferred for profit.</li>
         <li><strong>Service Suspension:</strong> The provider reserves the right to suspend or revoke access for reasons including violation of terms, abuse, or technical issues.</li>
       </ol>
@@ -111,48 +114,12 @@
     <h2>Team Support Ticket System</h2>
     <div class="buttons">
       <button onclick="createTicket()">Create Ticket</button>
+      <button onclick="openAdminPanel()">Admin Panel</button>
     </div>
     <div id="tickets"></div>
   </div>
 
   <script>
-    let socket;
-    let username = `User${Math.floor(Math.random() * 1000)}`;
-    let ticketCount = 0;
-
-    function connectWebSocket() {
-      socket = new WebSocket("wss://ticket-server-5we9.onrender.com"); // 🔧 Replace with your server
-
-      socket.onopen = () => {
-        console.log("Connected to WebSocket");
-      };
-
-      socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "ticket-message") {
-          const ticketId = data.ticketId;
-          const messages = document.getElementById(`messages-${ticketId}`);
-          if (messages) {
-            const msg = document.createElement('p');
-            msg.innerHTML = `<strong>${data.from}:</strong> ${data.text}`;
-            messages.appendChild(msg);
-            messages.scrollTop = messages.scrollHeight;
-          }
-        }
-      };
-
-      socket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
-
-      socket.onclose = () => {
-        console.log("Disconnected from WebSocket");
-        setTimeout(connectWebSocket, 3000); // Try reconnecting
-      };
-    }
-
-    connectWebSocket();
-
     function agree() {
       alert("You agreed to the terms. You can now create support tickets.");
       document.getElementById('agreement-container').style.display = 'none';
@@ -163,6 +130,7 @@
       alert("You have declined the terms. Purchase cannot continue.");
     }
 
+    let ticketCount = 0;
     function createTicket() {
       ticketCount++;
       const ticketsDiv = document.getElementById('tickets');
@@ -181,40 +149,33 @@
         </div>
       `;
       ticketsDiv.appendChild(ticketDiv);
-
-      // Notify server
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'create-ticket', username, ticketId: ticketCount }));
-      }
     }
 
     function sendMessage(ticketId) {
       const input = document.getElementById(`input-${ticketId}`);
+      const messages = document.getElementById(`messages-${ticketId}`);
       const text = input.value.trim();
       if (text !== '') {
-        const messages = document.getElementById(`messages-${ticketId}`);
         const msg = document.createElement('p');
         msg.innerHTML = `<strong>You:</strong> ${text}`;
         messages.appendChild(msg);
-        messages.scrollTop = messages.scrollHeight;
         input.value = '';
-
-        // Send to server
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: 'ticket-message',
-            ticketId,
-            from: username,
-            text
-          }));
-        }
+        messages.scrollTop = messages.scrollHeight;
+        // TODO: Send message to server via WebSocket here
       }
     }
 
     function closeTicket(ticketId) {
       const ticket = document.getElementById(`ticket-${ticketId}`);
-      if (ticket) {
-        ticket.remove();
+      ticket.remove();
+    }
+
+    function openAdminPanel() {
+      const password = prompt("Enter admin password:");
+      if (password === "mySuperSecretAdminPass") {  // Change this password
+        window.location.href = "/admin.html";
+      } else {
+        alert("Incorrect password. Access denied.");
       }
     }
   </script>
